@@ -1,21 +1,15 @@
-//#define DEBUG
-
 // Время нажатия на кнопку - 2 секунды:
 #define PRESS_DELAY 2000
-// Время, через которое MMC отключился после выключения зажигания (3 минут):
-#define MMC_OFF_TIMEOUT_AFTER_ACC_OFF 180000 //1000*60*3;
+// Время, через которое MMC отключился после выключения зажигания (5 секунд):
+#define MMC_OFF_TIMEOUT_AFTER_ACC_OFF 5000 //1000*5;
 // Время, через которое MMC отключится после ручного включения и выключенного зажигания (40 минут):
 #define MMC_OFF_TIMEOUT_AFTER_MANUAL_ON_AND_ACC_OFF 2400000 //1000*60*40;
 
+// Pins config
 #define ACC_INPUT 2
 #define USB_POWER 3
 #define MAIN_BUTTON 4
-
-#ifdef DEBUG
-char debug_buf[255];
-#define DEBUG_SLEEP 500
-#endif
-
+#define LED 1
 
 int mmc_status=0;
 int acc_status=0;
@@ -34,61 +28,29 @@ enum states {
 
 int state=MMC_OFF;
 
-//#ifdef DEBUG
-void acc_status_led(void)
-{
-  acc_status=digitalRead(ACC_INPUT);
-  if(acc_status==ON)
-  {
-    digitalWrite(13,HIGH);
-    delay(100);  
-    digitalWrite(13,LOW);
-  }
-  
-}
-//#endif
-
 void setup()
 {  
-  Serial.begin(9600);
   pinMode(ACC_INPUT, INPUT);
   pinMode(MAIN_BUTTON, INPUT);
   pinMode(USB_POWER, INPUT);
-  pinMode(13, OUTPUT);
+  pinMode(LED, OUTPUT);
 }
+
 int press_key(void)
 {
   pinMode(MAIN_BUTTON, OUTPUT);
   digitalWrite(MAIN_BUTTON, LOW);
-#ifdef DEBUG
-  sprintf(debug_buf,"%lu: Start press key...",millis());
-  Serial.println(debug_buf); 
-#endif
+  digitalWrite(LED,HIGH);
+
   delay(PRESS_DELAY);
   pinMode(MAIN_BUTTON, INPUT);
-#ifdef DEBUG
-  sprintf(debug_buf,"%lu: End press key...",millis());
-  Serial.println(debug_buf); 
-#endif
-
+  digitalWrite(LED,LOW);
 }
 
 int checkStateMachine()
 {
   acc_status=digitalRead(ACC_INPUT);
   mmc_status=digitalRead(USB_POWER);
-
-#ifdef DEBUG
-  sprintf(debug_buf,"%lu: MMC power status: %d ",millis(), mmc_status);
-  Serial.println(debug_buf);
-  sprintf(debug_buf,"%lu: ACC status: %d ",millis(), acc_status);
-  Serial.println(debug_buf); 
-#endif
-
-#ifdef DEBUG
-  sprintf(debug_buf,"%lu: Current state is: %d",millis(), state );
-  Serial.println(debug_buf); 
-#endif
 
   switch (state)
   {
@@ -144,15 +106,6 @@ int checkStateMachine()
           mmc_status=digitalRead(USB_POWER);
           if(acc_status==ON||mmc_status==OFF)break;
           delay(500);
-#ifdef DEBUG
-          sprintf(debug_buf,"%lu: MMC power status: %d ",millis(), mmc_status);
-          Serial.println(debug_buf);
-          sprintf(debug_buf,"%lu: ACC status: %d ",millis(), acc_status);
-          Serial.println(debug_buf); 
-          sprintf(debug_buf,"%lu: sleep in MMC_ON: %lu < %lu before off MMC",millis(), t,  MMC_OFF_TIMEOUT_AFTER_ACC_OFF);
-          Serial.println(debug_buf); 
-#endif
-
         }
         // Обновляем текущий статус ACC:
         acc_status=digitalRead(ACC_INPUT);
@@ -210,14 +163,6 @@ int checkStateMachine()
             mmc_status=digitalRead(USB_POWER);
             if(acc_status==ON||mmc_status==OFF)break;
             delay(500);
-#ifdef DEBUG
-            sprintf(debug_buf,"%lu: MMC power status: %d ",millis(), mmc_status);
-            Serial.println(debug_buf);
-            sprintf(debug_buf,"%lu: ACC status: %d ",millis(), acc_status);
-            Serial.println(debug_buf); 
-            sprintf(debug_buf,"%lu: sleep in MMC_MANUAL_ON: %lu < %lu before off MMC",millis(), t, MMC_OFF_TIMEOUT_AFTER_MANUAL_ON_AND_ACC_OFF );
-            Serial.println(debug_buf); 
-#endif
           }
           // Обновляем текущий статус ACC:
           acc_status=digitalRead(ACC_INPUT);
@@ -251,12 +196,5 @@ int checkStateMachine()
 
 void loop()
 {
-  
   checkStateMachine();
-
-//#ifdef DEBUG
-  acc_status_led();
-  delay(500);
-//#endif
 }
-
